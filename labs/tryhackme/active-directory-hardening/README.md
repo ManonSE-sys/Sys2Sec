@@ -215,11 +215,12 @@ notamment en utilisant différentes catégories de caractères.
 Une politique de mot de passe ne repose pas uniquement sur la complexité.
 
 Il faut également prendre en compte :
-
 - la longueur ;
 - l'historique ;
 - la fréquence de changement ;
 - les mécanismes d'authentification complémentaires.
+
+Il vaut mieux se baser sur les recommendations de **l'ANSSI**.
 
 ### Capture
 
