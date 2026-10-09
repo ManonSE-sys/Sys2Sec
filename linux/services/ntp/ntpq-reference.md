@@ -33,3 +33,13 @@ Elle fournit des informations essentielles sur les serveurs NTP avec lesquels vo
 - : Serveurs rejetés.
 x : Serveurs marqués comme défaillants
 ```
+
+## 🔗 Ressources associées
+
+Cette commande est utilisée par le script de supervision suivant :
+
+👉 [Voir le script check_ntp_sync.sh](../monitoring/scripts/ntp-check/check_ntp_sync.sh)
+
+Pour la mise en place complète d'un serveur NTP :
+
+👉 [Voir l'installation du serveur NTP](installation.md)
