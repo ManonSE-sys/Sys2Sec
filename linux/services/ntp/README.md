@@ -10,7 +10,7 @@ Ce dossier regroupe plusieurs ressources autour de la mise en place et de la sup
 - [`ntpq-reference.md`](ntpq-reference.md)  
   Explication de la commande `ntpq -p`, de ses colonnes et des symboles utilisés pour identifier les sources de synchronisation.
 
-- [`check_ntp_sync.sh`](check_ntp_sync.sh)  
+- [`check_ntp_sync.sh`](../monitoring/scripts/ntp-check/check_ntp_sync.sh)  
   Script Bash permettant de vérifier automatiquement si une source NTP synchronisée est présente.
 
 ## Objectifs
