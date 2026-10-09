@@ -189,6 +189,149 @@ Pour un usage réel, **FTPS** ou **SFTP** permettent de protéger les échanges 
 
 ---
 
+## 🔐 Sécurité et durcissement
+
+### Désactiver les connexions anonymes
+
+```ini
+anonymous_enable=NO
+```
+
+Cela évite qu'un utilisateur non authentifié puisse accéder au serveur.
+
+---
+
+### Restreindre les utilisateurs à leur répertoire
+
+```ini
+chroot_local_user=YES
+```
+
+Cette option permet de limiter les utilisateurs locaux à leur environnement FTP et de réduire leur visibilité sur le système.
+
+---
+
+### Limiter les droits d'écriture
+
+Les utilisateurs ne doivent disposer de droits d'écriture que sur les répertoires nécessaires.
+
+Exemple :
+
+```text
+/home/ftpuser/ftp        → contrôlé par root
+/home/ftpuser/ftp/upload → accessible en écriture à ftpuser
+```
+
+Cette séparation évite de rendre toute la racine FTP modifiable.
+
+---
+
+### Éviter FTP classique sur un réseau non maîtrisé
+
+FTP classique ne chiffre ni :
+
+- les identifiants ;
+- les commandes ;
+- les fichiers transférés.
+
+Une interception du trafic réseau peut donc exposer les données échangées.
+
+Pour un usage réel, il est préférable d'utiliser :
+
+- **FTPS** pour conserver le protocole FTP avec TLS ;
+- **SFTP** lorsque SSH est disponible.
+
+---
+
+### Activer TLS avec vsftpd
+
+Pour utiliser FTPS, vsftpd peut être configuré avec un certificat TLS.
+
+Exemple :
+
+```ini
+ssl_enable=YES
+force_local_logins_ssl=YES
+force_local_data_ssl=YES
+
+rsa_cert_file=/etc/ssl/certs/vsftpd.crt
+rsa_private_key_file=/etc/ssl/private/vsftpd.key
+```
+
+> ⚠️ Un certificat adapté à l'environnement doit être utilisé.  
+> Les certificats de test ne doivent pas être utilisés en production.
+
+---
+
+### Limiter le mode passif
+
+Si le mode passif est utilisé, il est préférable de définir une plage de ports précise :
+
+```ini
+pasv_enable=YES
+pasv_min_port=40000
+pasv_max_port=40100
+```
+
+Cela permet de n'ouvrir dans le pare-feu que les ports réellement nécessaires.
+
+---
+
+### Restreindre l'accès réseau
+
+Le serveur FTP ne devrait être accessible que depuis les réseaux ou machines qui en ont besoin.
+
+Le filtrage peut être effectué via :
+
+- le pare-feu du serveur ;
+- un pare-feu réseau ;
+- des ACL réseau.
+
+Principe :
+
+```text
+Clients autorisés
+       │
+       ▼
+Pare-feu
+       │
+       ▼
+Serveur vsftpd
+```
+
+---
+
+### Surveiller les connexions
+
+Les journaux permettent de détecter :
+
+- les échecs d'authentification ;
+- les connexions inhabituelles ;
+- les transferts de fichiers ;
+- les erreurs du service.
+
+```bash
+journalctl -u vsftpd
+```
+
+```bash
+tail -f /var/log/vsftpd.log
+```
+
+---
+
+### Appliquer le principe du moindre privilège
+
+Les comptes FTP doivent :
+
+- avoir uniquement les droits nécessaires ;
+- être limités aux répertoires utiles ;
+- ne pas disposer de privilèges administrateur ;
+- utiliser des mots de passe robustes ;
+- être désactivés lorsqu'ils ne sont plus nécessaires.
+
+---
+
 ## 🔎 Diagnostic
 
 Les principales commandes de diagnostic et d'exploitation sont regroupées dans une fiche dédiée :
