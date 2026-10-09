@@ -1,0 +1,36 @@
+DEFAULT vesamenu.c32
+PROMPT 0
+MENU TITLE Installation UBUNTU par PXE
+
+MENU BEGIN Ubuntu20
+MENU TITLE Ubuntu 20.04 Netboot
+        label Ubuntu 20.04net
+           menu label Menu Precedant
+           menu exit
+        menu include ../ubuntu20/ubuntu20.menu
+MENU END
+
+MENU BEGIN Ubuntu22
+MENU TITLE Ubuntu 22.04.4 ISO
+        label Ubuntu 22.04iso
+           menu label Menu Precedant
+           menu exit
+        menu include ../ubuntu22/ubuntu22.menu
+MENU END
+
+MENU BEGIN Ubuntu24
+MENU TITLE Ubuntu 24.04.1 ISO
+        label Ubuntu 24.04iso
+           menu label Menu Precedant
+           menu exit
+        menu include ../ubuntu24/ubuntu24.menu
+MENU END
+
+label reboot
+         menu label Reboot
+         COM32 reboot.c32
+
+label boot local
+         menu label Boot Local
+         COM32 chain.c32
+         APPEND hd0

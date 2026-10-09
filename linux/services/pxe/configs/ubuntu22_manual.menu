@@ -1,0 +1,4 @@
+label Manuelle
+        menu label Installation Server manuelle
+        kernel ../DOSSIER_VERSION/server/vmlinuz
+        append  root=/dev/ram0 ramdisk_size=150000 vga=normal ip=dhcp cloud-config-url=/dev/null initrd=../DOSSIER_VERSION/server/initrd url=http://192.168.1.145/iso/IMAGE_ISO

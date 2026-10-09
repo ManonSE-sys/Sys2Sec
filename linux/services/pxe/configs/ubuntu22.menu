@@ -1,0 +1,15 @@
+MENU BEGIN auto
+MENU TITLE Installation Automatique
+        label auto
+        menu label Menu Precedant
+        menu exit
+        Menu INCLUDE ../DOSSIER_VERSION/NOM_NUMERO_VERSION_auto.menu
+MENU END
+
+MENU BEGIN manuelle
+MENU TITLE Installation Manuelle
+        label auto
+        menu label Menu Precedant
+        menu exit
+        Menu INCLUDE ../DOSSIER_VERSION/NOM_NUMERO_VERSION_manuelle.menu
+MENU END
