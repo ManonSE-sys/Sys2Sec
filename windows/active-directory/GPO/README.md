@@ -199,4 +199,4 @@ Les commandes `gpresult`, `gpupdate` et `rsop.msc` sont également importantes p
 
 J'ai également travaillé ces notions dans un lab TryHackMe consacré au durcissement d'Active Directory et aux stratégies de groupe.
 
-👉 [Voir le lab Active Directory Hardening](../../labs/tryhackme/active-directory-hardening/README.md)
+👉 [Voir le lab Active Directory Hardening](/labs/tryhackme/active_directory_hardening/README.md)
