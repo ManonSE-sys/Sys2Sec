@@ -29,13 +29,3 @@ Ce mini-projet permet de travailler plusieurs notions :
 1. Installer et configurer le serveur NTP.
 2. Comprendre la sortie de `ntpq -p`.
 3. Automatiser la vérification avec le script de monitoring.
-
-## Arborescence
-
-```text
-ntp/
-├── README.md
-├── installation.md
-├── ntpq-reference.md
-└── check_ntp_sync.sh
-```
