@@ -75,8 +75,8 @@ Vous devriez voir une liste des serveurs avec lesquels votre serveur NTP est syn
 
 Pour comprendre la sortie de `ntpq -p` :
 
-👉 [Voir la fiche de référence ntpq](../monitoring/ntp-check/ntpq-reference.md)
+👉 [Voir la fiche de référence ntpq](ntpq-reference.md)
 
 Pour automatiser la vérification de la synchronisation :
 
-👉 [Voir le script de monitoring NTP](../monitoring/ntp-check/check_ntp_sync.sh)
+👉 [Voir le script de monitoring NTP](../monitoring/scripts/ntp-check/check_ntp_sync.sh)
