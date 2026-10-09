@@ -1,0 +1,7 @@
+Origin: srv-apt
+Label: Local
+Codename: noble
+Architectures: source i386 amd64
+Components: main
+Description: Apt repository pour Local
+SignWith: default
