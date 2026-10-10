@@ -30,3 +30,5 @@ Cette section regroupe différents projets et fiches autour de l'administration,
 
 - Tests de stress avec stress-ng
 - Diagnostic des systèmes de fichiers
+
+👉 [Voir les troubleshooting](./troubleshooting/)
