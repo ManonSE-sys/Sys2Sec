@@ -11,7 +11,7 @@ Le playbook permet de mettre une machine dans un état de configuration attendu 
 * le pare-feu ;
 * les mises à jour système.
 
-Le projet complète le script [`linux-security-audit`](../../../security/linux-security-audit/), qui permet de vérifier l'état de sécurité de la machine avant et après l'application du playbook.
+Le projet complète le script [`linux_security_audit`](../../../security/linux_security_audit/), qui permet de vérifier l'état de sécurité de la machine avant et après l'application du playbook.
 
 ---
 
