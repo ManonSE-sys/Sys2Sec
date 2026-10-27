@@ -55,7 +55,7 @@ linux-hardening/
 
 Contient les machines sur lesquelles le playbook doit être exécuté.
 
-### [`hardening.ini`](./hardening.ini)
+### [`hardening.yaml`](./hardening.yaml)
 
 Contient les différentes tâches de durcissement.
 
