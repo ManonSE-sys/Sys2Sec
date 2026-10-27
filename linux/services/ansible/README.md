@@ -58,7 +58,7 @@ Le playbook permet notamment de :
 
 Le projet est associé à un script d'audit permettant de vérifier l'état de la machine avant et après remédiation.
 
-👉 [Voir le projet Linux Hardening](./linux-hardening/)
+👉 [Voir le projet Linux Hardening](./linux_hardening/)
 
 ---
 
