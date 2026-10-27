@@ -51,11 +51,11 @@ linux-hardening/
 └── hardening.yaml
 ```
 
-### `inventory.ini`
+### [`inventory.ini`](./inventory.ini)
 
 Contient les machines sur lesquelles le playbook doit être exécuté.
 
-### `hardening.yaml`
+### [`hardening.ini`](./hardening.ini)
 
 Contient les différentes tâches de durcissement.
 
