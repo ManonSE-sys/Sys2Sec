@@ -2,21 +2,24 @@
 
 ## 📌 Présentation
 
-**NFS (Network File System)** permet de partager des fichiers et des répertoires entre plusieurs machines sur un réseau.
+**NFS (Network File System)** permet de partager des fichiers et des répertoires entre plusieurs machines Linux sur un réseau.
 
-Ce projet documente la mise en place d'un serveur NFS sous Ubuntu, la configuration d'un répertoire partagé, ainsi que le montage du partage depuis un client Linux.
+Ce projet documente la mise en place et l'administration d'un partage NFS sous Ubuntu, avec une attention portée à la configuration, aux permissions, à la sécurité et au diagnostic.
 
 ---
 
 ## 🎯 Objectifs
 
-Cette mise en place permet de :
+Ce projet permet de travailler sur :
 
-- partager un répertoire entre plusieurs machines ;
-- centraliser l'accès à certains fichiers ;
-- contrôler les clients autorisés à monter le partage ;
-- monter le partage manuellement ou automatiquement ;
-- diagnostiquer les principaux problèmes côté serveur et côté client.
+* le partage de fichiers entre plusieurs machines Linux ;
+* la centralisation de données sur un serveur ;
+* la configuration des exports NFS ;
+* le contrôle des clients autorisés ;
+* les montages manuels et persistants ;
+* les permissions Unix ;
+* la sécurité des partages ;
+* le troubleshooting côté serveur et côté client.
 
 ---
 
@@ -25,7 +28,7 @@ Cette mise en place permet de :
 ```text
 Client Linux
     │
-    │ Montage NFS
+    │ NFS
     ▼
 Serveur NFS
     │
@@ -38,81 +41,59 @@ Dans cet exemple, le serveur exporte le répertoire :
 /srv/nfs/share
 ```
 
-vers les clients autorisés sur le réseau.
+vers les clients autorisés.
 
 ---
 
-## 1. Mettre à jour le système
+## ⚙️ Fonctionnement
 
-```bash
-sudo apt update && sudo apt upgrade -y
-```
-
----
-
-## 2. Installer le serveur NFS
-
-Installer le paquet nécessaire :
-
-```bash
-sudo apt install nfs-kernel-server -y
-```
-
----
-
-## 3. Créer le répertoire à partager
-
-Créer le répertoire qui sera exporté :
-
-```bash
-sudo mkdir -p /srv/nfs/share
-```
-
-Les permissions et le propriétaire du répertoire doivent ensuite être adaptés à l'usage prévu.
-
-> ⚠️ Les droits Unix appliqués au répertoire restent importants : le fait d'exporter un répertoire via NFS ne remplace pas la gestion des permissions locales.
-
----
-
-## 4. Configurer les exports NFS
-
-Le fichier principal de configuration des exports est :
+Le serveur NFS publie un ou plusieurs répertoires configurés dans :
 
 ```text
 /etc/exports
 ```
 
-L'éditer avec :
-
-```bash
-sudo nano /etc/exports
-```
-
-Exemple pour autoriser les machines du réseau `192.168.1.0/24` :
+Exemple :
 
 ```text
 /srv/nfs/share 192.168.1.0/24(rw,sync,no_subtree_check)
 ```
 
-### Explication des options
+Un client autorisé peut ensuite monter ce partage sur son système de fichiers local.
 
-- `rw` : autorise la lecture et l'écriture ;
-- `sync` : demande au serveur de valider les écritures de manière synchrone ;
-- `no_subtree_check` : désactive la vérification des sous-répertoires exportés.
+Exemple :
 
-> ⚠️ L'autorisation `192.168.1.0/24` ouvre le partage à l'ensemble de ce sous-réseau. Dans un environnement réel, il est préférable de limiter l'accès aux clients réellement nécessaires.
+```bash
+sudo mount -t nfs <IP_DU_SERVEUR>:/srv/nfs/share /mnt/nfs_share
+```
+
+Le partage apparaît alors comme un répertoire local, tout en utilisant les données stockées sur le serveur NFS.
 
 ---
 
-## 5. Appliquer la configuration
+## 📂 Gestion des exports
 
-Recharger les exports :
+Les exports sont définis dans :
+
+```text
+/etc/exports
+```
+
+Les principales options utilisées dans ce projet sont :
+
+| Option             | Description                                    |
+| ------------------ | ---------------------------------------------- |
+| `rw`               | Autorise la lecture et l'écriture              |
+| `sync`             | Valide les écritures de manière synchrone      |
+| `no_subtree_check` | Désactive la vérification des sous-répertoires |
+
+Après une modification de `/etc/exports`, les exports peuvent être rechargés avec :
 
 ```bash
 sudo exportfs -ra
 ```
 
-Afficher les exports actifs :
+et vérifiés avec :
 
 ```bash
 sudo exportfs -v
@@ -120,82 +101,74 @@ sudo exportfs -v
 
 ---
 
-## 6. Démarrer et activer le service NFS
+## 🔐 Sécurité
 
-```bash
-sudo systemctl start nfs-kernel-server
-sudo systemctl enable nfs-kernel-server
+La configuration d'un partage NFS doit prendre en compte plusieurs éléments.
+
+### Limiter les clients autorisés
+
+Il est préférable de limiter l'accès aux machines ou réseaux réellement nécessaires.
+
+Par exemple :
+
+```text
+/srv/nfs/share 192.168.1.0/24(rw,sync,no_subtree_check)
 ```
 
-Vérifier son état :
-
-```bash
-systemctl status nfs-kernel-server
-```
+est préférable à un export accessible à tous les clients.
 
 ---
 
-## 7. Configurer un client NFS
+### Permissions Unix
 
-Sur la machine cliente, installer les outils NFS :
+NFS s'appuie sur les permissions du système de fichiers.
 
-```bash
-sudo apt install nfs-common -y
-```
+Il est donc important de vérifier :
 
-Créer un point de montage :
-
-```bash
-sudo mkdir -p /mnt/nfs_share
-```
-
----
-
-## 8. Monter le partage manuellement
-
-Monter le partage :
-
-```bash
-sudo mount -t nfs <IP_DU_SERVEUR>:/srv/nfs/share /mnt/nfs_share
-```
-
-Vérifier ensuite le montage :
-
-```bash
-df -h
-```
-
-Il est également possible de vérifier les montages NFS avec :
-
-```bash
-mount | grep nfs
-```
-
----
-
-## 9. Tester les accès
-
-Créer ou modifier un fichier dans le partage afin de vérifier le fonctionnement en lecture et en écriture.
+* le propriétaire ;
+* le groupe ;
+* les permissions ;
+* les UID et GID.
 
 Exemple :
 
 ```bash
-touch /mnt/nfs_share/test.txt
+ls -ld /srv/nfs/share
 ```
-
-Si l'opération échoue, vérifier notamment :
-
-- les permissions du répertoire sur le serveur ;
-- les options définies dans `/etc/exports` ;
-- l'adresse ou le réseau autorisé ;
-- l'état du service NFS ;
-- les journaux système.
 
 ---
 
-## 10. Monter automatiquement le partage au démarrage
+### Root squashing
 
-Sur le client, éditer :
+NFS utilise généralement :
+
+```text
+root_squash
+```
+
+Ce mécanisme empêche un utilisateur `root` provenant d'un client d'obtenir automatiquement les privilèges root sur le serveur.
+
+L'option :
+
+```text
+no_root_squash
+```
+
+doit être utilisée avec prudence, car elle réduit fortement l'isolation entre le client et le serveur.
+
+---
+
+### Réseau et pare-feu
+
+Le service NFS ne doit être accessible que depuis les réseaux nécessaires.
+
+Les règles de pare-feu doivent être adaptées à l'architecture utilisée.
+
+---
+
+## 💾 Montage persistant
+
+Un partage NFS peut être monté automatiquement au démarrage grâce à :
 
 ```text
 /etc/fstab
@@ -207,43 +180,106 @@ Exemple :
 <IP_DU_SERVEUR>:/srv/nfs/share /mnt/nfs_share nfs defaults,_netdev 0 0
 ```
 
-L'option `_netdev` indique que le montage dépend du réseau.
+L'option :
 
-Tester la configuration avant de redémarrer :
+```text
+_netdev
+```
+
+indique que le montage dépend de la disponibilité du réseau.
+
+La configuration doit être testée avant redémarrage avec :
 
 ```bash
 sudo mount -a
 ```
 
-> ⚠️ Une erreur dans `/etc/fstab` peut perturber le démarrage ou le montage automatique. Il est donc important de toujours tester la configuration avec `mount -a`.
+---
+
+## 🚀 Installation et configuration
+
+La procédure complète de mise en place du serveur et du client est disponible dans une fiche dédiée :
+
+👉 [Installation et configuration NFS](./installation.md)
 
 ---
 
-## 🔐 Points d'attention
+## 🛠️ Troubleshooting
 
-Lors de la mise en place d'un partage NFS :
+Les incidents courants sont documentés dans le dossier :
 
-- limiter les clients autorisés à accéder au partage ;
-- vérifier les permissions Unix du répertoire exporté ;
-- éviter d'exposer inutilement le service à des réseaux non maîtrisés ;
-- tester les droits en lecture et en écriture ;
-- surveiller les journaux en cas d'erreur ;
-- documenter les montages automatiques configurés dans `/etc/fstab`.
+```text
+troubleshooting/
+```
+
+Cas documentés :
+
+* accès refusé lors de l'utilisation du partage ;
+* échec du montage ;
+* export NFS non visible depuis le client.
+
+👉 [Voir la documentation de troubleshooting](./troubleshooting/)
 
 ---
 
-## 🔎 Diagnostic
+## 📚 Commandes utiles
 
-Les principales commandes de diagnostic et d'administration sont regroupées dans une fiche dédiée :
+Une fiche regroupe les principales commandes utilisées pour administrer et diagnostiquer NFS.
 
 👉 [Voir les commandes utiles NFS](./commandes-utiles.md)
 
 ---
 
+## ✅ Validation
+
+Plusieurs commandes permettent de vérifier le fonctionnement du service.
+
+Sur le serveur :
+
+```bash
+sudo exportfs -v
+```
+
+Depuis le client :
+
+```bash
+showmount -e <IP_DU_SERVEUR>
+```
+
+Vérifier le montage :
+
+```bash
+findmnt -t nfs,nfs4
+```
+
+Puis effectuer un test de lecture ou d'écriture sur le partage.
+
+---
+
 ## 📌 Points clés
 
-- **Partage réseau :** NFS permet de mettre à disposition des fichiers sur plusieurs machines Linux.
-- **Centralisation :** les données peuvent être regroupées sur un serveur dédié.
-- **Contrôle d'accès :** les exports peuvent être limités à certains clients ou réseaux.
-- **Persistance :** les montages peuvent être automatisés via `/etc/fstab`.
-- **Diagnostic :** `exportfs`, `showmount`, `nfsstat` et les journaux permettent d'identifier les principaux problèmes.
+* NFS permet de partager des fichiers entre plusieurs systèmes Linux.
+* `/etc/exports` définit les répertoires exportés et les clients autorisés.
+* `exportfs` permet de gérer et vérifier les exports.
+* Les permissions Unix restent applicables.
+* Les UID et GID influencent les droits d'accès.
+* `/etc/fstab` permet de rendre les montages persistants.
+* `_netdev` indique qu'un montage dépend du réseau.
+* `root_squash` permet de limiter les privilèges root provenant d'un client.
+* Les problèmes NFS peuvent provenir du réseau, des exports, des permissions ou du système de fichiers.
+
+---
+
+## 🧠 Compétences mises en pratique
+
+Ce projet permet de travailler sur :
+
+* administration Linux ;
+* services réseau ;
+* NFS ;
+* permissions Unix ;
+* gestion des systèmes de fichiers ;
+* configuration réseau ;
+* montages persistants ;
+* sécurité des services ;
+* troubleshooting Linux.
