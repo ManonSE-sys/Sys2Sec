@@ -1,5 +1,3 @@
-# `linux/security/README.md`
-
 # Sécurité Linux
 
 ## 📌 Présentation
