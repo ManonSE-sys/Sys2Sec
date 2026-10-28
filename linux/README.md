@@ -1,34 +1,35 @@
 # Linux
 
-Cette section regroupe différents projets et fiches autour de l'administration, de la configuration, du déploiement et du dépannage de systèmes Linux.
+Cette section regroupe différents projets, scripts et fiches autour de l'administration, de la configuration, de la sécurité et du troubleshooting sous Linux.
 
-## Configuration
+## 📂 Contenu
 
-- Nom d'hôte
-- Adresse IP statique
-- DNS
-- IPv6
-- SSH
-- Utilisateurs et sudo
-- Netplan
+### ⚙️ Configuration
 
-👉 [Voir les fiches de configuration](./configuration/)
+Fiches consacrées à la configuration de base d'un système Linux.
 
-## Services
+👉 [Voir la section Configuration](./configuration/)
 
-- DHCP
-- NFS
-- NTP
-- OpenVPN
-- PXE
-- vsftpd
-- gestion des paquets
+---
 
-👉 [Voir les services](./services/)
+### 🖥️ Services
 
-## Troubleshooting
+Installation, configuration et administration de différents services Linux.
 
-- Tests de stress avec stress-ng
-- Diagnostic des systèmes de fichiers
+👉 [Voir la section Services](./services/)
 
-👉 [Voir les troubleshooting](./troubleshooting/)
+---
+
+### 🔐 Sécurité
+
+Scripts et projets consacrés à l'audit, au durcissement et au contrôle d'intégrité.
+
+👉 [Voir la section Sécurité](./security/)
+
+---
+
+### 🛠️ Troubleshooting
+
+Fiches consacrées au diagnostic et à la résolution de problèmes Linux.
+
+👉 [Voir la section Troubleshooting](./troubleshooting/)
