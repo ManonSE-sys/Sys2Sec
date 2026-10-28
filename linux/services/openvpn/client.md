@@ -79,7 +79,7 @@ Les éléments cryptographiques peuvent être intégrés directement au fichier 
 Mettre à jour le système :
 
 ```bash
-sudo apt update && sudo apt upgrade -y
+apt upgrade -y
 ```
 
 Installer le client OpenVPN :
