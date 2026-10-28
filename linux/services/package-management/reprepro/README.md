@@ -1,23 +1,31 @@
-# Dépôt APT local signé avec Reprepro et Apache
+# `reprepro/README.md`
+
+# Dépôt APT local signé avec Reprepro
 
 ## 📌 Présentation
 
-Ce projet documente la mise en place d'un **dépôt APT local** sous Ubuntu à l'aide de **Reprepro**, **GnuPG** et **Apache**.
+Ce projet documente la mise en place d'un **dépôt APT local** sous Ubuntu à l'aide de :
 
-L'objectif est de centraliser certains paquets `.deb`, de contrôler les versions mises à disposition et de permettre à des clients Ubuntu d'installer ces paquets depuis un dépôt interne signé.
+* **Reprepro** pour gérer les paquets et métadonnées ;
+* **GnuPG** pour signer le dépôt ;
+* **Apache** pour publier son contenu aux clients.
+
+L'objectif est de centraliser certains paquets `.deb`, de contrôler les versions mises à disposition et de permettre à des clients Ubuntu de les installer depuis un dépôt interne signé.
 
 ---
 
 ## 🎯 Objectifs
 
-Cette mise en place permet de :
+Ce projet permet de travailler sur :
 
-- réduire la dépendance aux dépôts externes pour certains paquets ;
-- centraliser les paquets utilisés dans l'infrastructure ;
-- contrôler les versions disponibles ;
-- signer le dépôt avec une clé GPG ;
-- publier le dépôt via Apache ;
-- configurer les clients APT pour utiliser le dépôt local.
+* la gestion d'un dépôt APT local ;
+* la centralisation de paquets Debian ;
+* la gestion des versions ;
+* la signature GPG ;
+* la publication HTTP avec Apache ;
+* la configuration des sources APT ;
+* la vérification de l'origine des paquets ;
+* la sécurité d'une chaîne de distribution logicielle.
 
 ---
 
@@ -29,9 +37,9 @@ Paquet .deb
     ▼
 Reprepro
     │
-    ├── indexation du paquet
-    ├── génération des métadonnées
-    └── signature du dépôt
+    ├── indexation
+    ├── métadonnées
+    └── signature GPG
     │
     ▼
 /var/www/repos/ubuntu/
@@ -42,83 +50,47 @@ Apache
     ▼
 Client Ubuntu
     │
-    ├── clé publique du dépôt
+    ├── clé publique
     └── source APT locale
 ```
 
 ---
 
-## 1. Mettre à jour le système
+## ⚙️ Fonctionnement
 
-```bash
-sudo apt update && sudo apt upgrade -y
-```
+Reprepro organise les paquets dans une structure compatible avec APT.
 
----
-
-## 2. Installer les paquets nécessaires
-
-```bash
-sudo apt install reprepro gnupg apache2 -y
-```
-
-Les composants utilisés sont :
-
-- **Reprepro** pour gérer le dépôt APT ;
-- **GnuPG** pour signer le dépôt ;
-- **Apache** pour publier le contenu via HTTP.
-
----
-
-## 3. Générer une clé GPG
-
-Créer une clé qui sera utilisée pour signer le dépôt :
-
-```bash
-gpg --full-generate-key
-```
-
-Afficher ensuite les clés disponibles :
-
-```bash
-gpg --list-keys
-```
-
-Repérer l'identifiant ou l'empreinte de la clé qui sera utilisée pour la signature.
-
-> ⚠️ La clé privée doit rester protégée. Seule la clé publique doit être distribuée aux clients.
-
----
-
-## 4. Créer l'arborescence du dépôt
-
-Créer les répertoires nécessaires :
-
-```bash
-sudo mkdir -p /var/www/repos/ubuntu/{conf,incoming}
-```
-
-L'arborescence de départ est la suivante :
+Lorsqu'un paquet est ajouté :
 
 ```text
-/var/www/repos/ubuntu/
-├── conf/
-└── incoming/
+Paquet .deb
+    ↓
+Reprepro
+    ↓
+Indexation
+    ↓
+Génération des métadonnées
+    ↓
+Signature
+    ↓
+Publication
 ```
+
+Le client peut ensuite utiliser ce dépôt comme une source APT classique.
 
 ---
 
-## 5. Configurer Reprepro
+## 📂 Configuration du dépôt
 
-Le fichier de distribution doit être créé ici :
+La définition de la distribution se trouve dans :
 
 ```text
 /var/www/repos/ubuntu/conf/distributions
 ```
 
-La configuration utilisée pour ce projet est disponible ici :
+Un exemple est disponible dans :
 
-👉 [`configs/distributions`](configs/distributions)
+👉 [`configs/distributions`](./configs/distributions)
 
 Exemple :
 
@@ -132,143 +104,181 @@ Description: Dépôt APT local
 SignWith: default
 ```
 
-> Adaptez le `Codename` à la version Ubuntu ciblée.  
-> N'ajoutez que les architectures réellement nécessaires.
+Le `Codename` et les architectures doivent être adaptés aux systèmes réellement ciblés.
 
 ---
 
-## 6. Ajouter un paquet au dépôt
+## 🔑 Signature GPG
 
-Copier ou télécharger un paquet `.deb` dans le répertoire `incoming`.
+Le dépôt est signé avec une clé GPG.
 
-Exemple :
-
-```bash
-cd /var/www/repos/ubuntu/incoming
-wget https://apt.puppet.com/puppet7-release-noble.deb
-```
-
-Ajouter ensuite le paquet au dépôt :
-
-```bash
-cd /var/www/repos/ubuntu
-sudo reprepro -Vb . includedeb noble incoming/puppet7-release-noble.deb
-```
-
-Le nom de distribution (`noble`) et le nom du paquet doivent être adaptés au contexte.
-
----
-
-## 7. Exporter la clé publique
-
-Afficher les clés :
-
-```bash
-gpg --list-keys
-```
-
-Exporter ensuite la clé publique en ASCII :
-
-```bash
-gpg --armor --export ID_CLE > /var/www/repos/ubuntu/repo-signing-key.asc
-```
-
-Cette clé sera récupérée par les clients afin de vérifier les signatures du dépôt.
-
-> Le fichier exporté ne contient que la clé publique.
-
----
-
-## 8. Configurer Apache
-
-Créer le virtual host :
+Principe :
 
 ```text
-/etc/apache2/sites-available/25-apt-local.conf
+Clé privée
+    │
+    └── signature du dépôt
+            │
+            ▼
+       Métadonnées signées
+            │
+            ▼
+       Client APT
+            │
+            └── vérification avec la clé publique
 ```
 
-La configuration utilisée pour ce projet est disponible ici :
+La **clé privée ne doit jamais être distribuée** aux clients.
 
-👉 [`configs/25-apt-local.conf`](configs/25-apt-local.conf)
-
-Activer ensuite le site :
-
-```bash
-sudo a2dissite 000-default.conf
-sudo a2ensite 25-apt-local.conf
-sudo systemctl reload apache2
-```
-
-Vérifier la configuration Apache avant le rechargement peut également être utile :
-
-```bash
-sudo apache2ctl configtest
-```
+Seule la clé publique est nécessaire pour vérifier les signatures.
 
 ---
 
-## 9. Configurer un client Ubuntu
+## 🌐 Publication avec Apache
 
-### Importer la clé publique
-
-Sur le client :
-
-```bash
-wget -O- http://adresse_ip_ou_nom_dns/ubuntu/repo-signing-key.asc \
-  | sudo gpg --dearmor -o /usr/share/keyrings/srv-apt.gpg
-```
-
----
-
-### Ajouter le dépôt APT
-
-Créer un fichier, par exemple :
+Le dépôt est publié depuis :
 
 ```text
-/etc/apt/sources.list.d/srv-apt.list
+/var/www/repos/ubuntu/
 ```
 
-avec le contenu suivant :
+via un VirtualHost Apache.
+
+La configuration utilisée est disponible dans :
+
+👉 [`configs/25-apt-local.conf`](./configs/25-apt-local.conf)
+
+Le client peut ensuite accéder au dépôt via une URL de type :
 
 ```text
-deb [signed-by=/usr/share/keyrings/srv-apt.gpg] http://adresse_ip_ou_nom_dns/ubuntu noble main
-```
-
-Puis mettre à jour la liste des paquets :
-
-```bash
-sudo apt update
+http://serveur/ubuntu
 ```
 
 ---
 
-## 10. Tester le dépôt
+## 💻 Configuration des clients
 
-Installer un paquet présent dans le dépôt :
+Le client dispose :
 
-```bash
-sudo apt install puppet7-release
+```text
+Clé publique du dépôt
+        +
+Source APT
+        ↓
+apt update
+        ↓
+Vérification des métadonnées
+        ↓
+Installation des paquets
 ```
 
-Si le paquet est trouvé et installé depuis le dépôt local, la publication et la configuration APT fonctionnent correctement.
+Une source peut par exemple être définie avec :
+
+```text
+deb [signed-by=/usr/share/keyrings/srv-apt.gpg] http://serveur/ubuntu noble main
+```
+
+L'utilisation de `signed-by` permet d'associer explicitement une clé au dépôt concerné.
 
 ---
 
-## 🔎 Diagnostic
+## 🔐 Sécurité
 
-### Vérifier Apache
+### Protéger la clé privée
+
+La clé utilisée pour signer le dépôt doit rester protégée.
+
+Une compromission de cette clé pourrait permettre de signer du contenu malveillant comme s'il provenait du dépôt légitime.
+
+---
+
+### Distribuer uniquement la clé publique
+
+Les clients ont uniquement besoin de la clé publique pour vérifier les signatures.
+
+---
+
+### Contrôler les paquets publiés
+
+Avant d'ajouter un paquet au dépôt, il est important de contrôler :
+
+* son origine ;
+* sa version ;
+* son architecture ;
+* son intégrité ;
+* sa nécessité.
+
+---
+
+### Maîtriser les versions
+
+L'un des intérêts d'un dépôt interne est de contrôler les versions disponibles pour les systèmes de l'infrastructure.
+
+Cela permet notamment d'éviter qu'une version non validée soit déployée automatiquement.
+
+---
+
+### Tester avant déploiement
+
+Un paquet ou une nouvelle version doit idéalement être validé dans un environnement de test avant publication à grande échelle.
+
+---
+
+## 🚀 Installation et configuration
+
+La procédure complète est disponible ici :
+
+👉 [Installation et configuration du dépôt](./installation.md)
+
+---
+
+## ✅ Validation
+
+Vérifier les paquets disponibles :
+
+```bash
+reprepro -b /var/www/repos/ubuntu list noble
+```
+
+Vérifier Apache :
 
 ```bash
 systemctl status apache2
 ```
 
-### Vérifier la configuration Apache
+Tester sa configuration :
 
 ```bash
-apache2ctl configtest
+sudo apache2ctl configtest
 ```
 
-### Consulter les journaux
+Depuis un client :
+
+```bash
+sudo apt update
+```
+
+Puis vérifier l'origine d'un paquet :
+
+```bash
+apt-cache policy <paquet>
+```
+
+---
+
+## 🔎 Diagnostic
+
+### Apache
+
+```bash
+systemctl status apache2
+```
+
+```bash
+sudo apache2ctl configtest
+```
+
+### Journaux
 
 ```bash
 tail -f /var/log/apache2/srv-apt_error.log
@@ -278,7 +288,7 @@ tail -f /var/log/apache2/srv-apt_error.log
 tail -f /var/log/apache2/srv-apt_access.log
 ```
 
-### Vérifier le contenu du dépôt
+### Reprepro
 
 ```bash
 reprepro -b /var/www/repos/ubuntu list noble
@@ -286,24 +296,256 @@ reprepro -b /var/www/repos/ubuntu list noble
 
 ---
 
-## 🔐 Points d'attention
+## 📌 Points clés
 
-Quelques précautions sont importantes :
-
-- protéger la clé privée utilisée pour signer le dépôt ;
-- distribuer uniquement la clé publique aux clients ;
-- limiter les paquets ajoutés au dépôt ;
-- contrôler les versions publiées ;
-- adapter le codename Ubuntu au système client ;
-- tester les mises à jour avant leur déploiement à grande échelle ;
-- utiliser HTTPS lorsque le contexte l'exige, même si APT vérifie également les signatures du dépôt.
+* Reprepro permet de gérer un dépôt APT interne.
+* Les versions des paquets publiés peuvent être maîtrisées.
+* GPG permet de signer le dépôt.
+* Les clients utilisent la clé publique pour vérifier son authenticité.
+* Apache permet de publier le dépôt sur le réseau.
+* `signed-by` permet d'associer une clé précise à une source APT.
+* La clé privée de signature constitue un élément critique.
 
 ---
 
-## 📌 Points clés
+## 🧠 Compétences mises en pratique
 
-- **Centralisation :** les paquets sont regroupés dans un dépôt interne.
-- **Contrôle :** les versions mises à disposition sont maîtrisées.
-- **Signature :** les métadonnées du dépôt sont signées avec GPG.
-- **Distribution :** Apache permet aux clients d'accéder au dépôt.
-- **Intégration :** les clients utilisent le dépôt via une source APT dédiée.
+* administration Linux ;
+* gestion de paquets Debian ;
+* APT ;
+* Reprepro ;
+* GnuPG ;
+* Apache ;
+* gestion de clés ;
+* sécurité de la chaîne logicielle ;
+* gestion de versions ;
+* troubleshooting.
+
+---
+
+# `reprepro/installation.md`
+
+# Installation d'un dépôt APT avec Reprepro
+
+## 📌 Objectif
+
+Cette fiche décrit la création d'un dépôt APT interne signé avec GPG et publié avec Apache.
+
+---
+
+## 1. Mettre à jour l'index APT
+
+```bash
+sudo apt update
+```
+
+---
+
+## 2. Installer les composants
+
+```bash
+sudo apt install reprepro gnupg apache2 -y
+```
+
+Les composants utilisés sont :
+
+* Reprepro pour gérer le dépôt ;
+* GnuPG pour la signature ;
+* Apache pour sa publication.
+
+---
+
+## 3. Générer la clé GPG
+
+```bash
+gpg --full-generate-key
+```
+
+Afficher les clés :
+
+```bash
+gpg --list-keys
+```
+
+Repérer l'identifiant ou l'empreinte de la clé utilisée pour la signature.
+
+> 🔐 La clé privée doit rester protégée.
+
+---
+
+## 4. Créer l'arborescence
+
+```bash
+sudo mkdir -p /var/www/repos/ubuntu/{conf,incoming}
+```
+
+Structure initiale :
+
+```text
+/var/www/repos/ubuntu/
+├── conf/
+└── incoming/
+```
+
+---
+
+## 5. Configurer Reprepro
+
+Créer :
+
+```text
+/var/www/repos/ubuntu/conf/distributions
+```
+
+La configuration de ce projet est disponible dans :
+
+👉 [`configs/distributions`](./configs/distributions)
+
+Exemple :
+
+```text
+Origin: srv-apt
+Label: Local
+Codename: noble
+Architectures: source amd64
+Components: main
+Description: Dépôt APT local
+SignWith: default
+```
+
+---
+
+## 6. Ajouter un paquet
+
+Placer le paquet dans :
+
+```text
+/var/www/repos/ubuntu/incoming/
+```
+
+Puis :
+
+```bash
+cd /var/www/repos/ubuntu
+sudo reprepro -Vb . includedeb noble incoming/<paquet>.deb
+```
+
+Vérifier :
+
+```bash
+reprepro -b /var/www/repos/ubuntu list noble
+```
+
+---
+
+## 7. Exporter la clé publique
+
+```bash
+gpg --armor --export ID_CLE \
+  > /var/www/repos/ubuntu/repo-signing-key.asc
+```
+
+Le fichier exporté contient uniquement la clé publique.
+
+---
+
+## 8. Configurer Apache
+
+La configuration utilisée est disponible dans :
+
+👉 [`configs/25-apt-local.conf`](./configs/25-apt-local.conf)
+
+Vérifier la syntaxe :
+
+```bash
+sudo apache2ctl configtest
+```
+
+Activer le site :
+
+```bash
+sudo a2dissite 000-default.conf
+sudo a2ensite 25-apt-local.conf
+sudo systemctl reload apache2
+```
+
+---
+
+# Configuration cliente
+
+## 9. Importer la clé publique
+
+```bash
+wget -O- http://ADRESSE_SERVEUR/ubuntu/repo-signing-key.asc \
+  | sudo gpg --dearmor -o /usr/share/keyrings/srv-apt.gpg
+```
+
+---
+
+## 10. Ajouter la source APT
+
+Créer :
+
+```text
+/etc/apt/sources.list.d/srv-apt.list
+```
+
+avec :
+
+```text
+deb [signed-by=/usr/share/keyrings/srv-apt.gpg] http://ADRESSE_SERVEUR/ubuntu noble main
+```
+
+---
+
+## 11. Actualiser les sources
+
+```bash
+sudo apt update
+```
+
+---
+
+## 12. Tester le dépôt
+
+Installer un paquet publié :
+
+```bash
+sudo apt install <paquet>
+```
+
+Vérifier sa provenance :
+
+```bash
+apt-cache policy <paquet>
+```
+
+---
+
+## ✅ Résultat attendu
+
+```text
+Administrateur
+      │
+      ▼
+Paquet .deb
+      │
+      ▼
+Reprepro + signature
+      │
+      ▼
+Apache
+      │
+      ▼
+Client APT
+      │
+      ▼
+Vérification + installation
+```
+
+---
+
+## Voir aussi
+
+* [Configuration Reprepro](./configs/distributions)
+* [Configuration Apache](./configs/25-apt-local.conf)
