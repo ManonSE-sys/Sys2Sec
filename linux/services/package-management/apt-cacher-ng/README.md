@@ -2,97 +2,158 @@
 
 ## 📌 Présentation
 
-**apt-cacher-ng** permet de mettre en cache les paquets téléchargés par les clients APT.
+**apt-cacher-ng** est un proxy de cache destiné notamment aux téléchargements de paquets.
 
-Lorsqu'un paquet est demandé pour la première fois, le serveur le récupère depuis le dépôt distant et le conserve localement. Les clients suivants peuvent ensuite récupérer ce même paquet depuis le cache plutôt que de le télécharger à nouveau depuis Internet.
+Lorsqu'un paquet est demandé pour la première fois, le serveur le récupère depuis le dépôt distant et le conserve localement.
 
-Cette solution est particulièrement intéressante lorsqu'un réseau contient plusieurs machines Ubuntu ou Debian utilisant les mêmes dépôts.
+Une demande ultérieure du même contenu peut alors être servie depuis le cache.
+
+Cette solution est particulièrement intéressante sur un réseau contenant plusieurs machines Debian ou Ubuntu.
 
 ---
 
 ## 🎯 Objectifs
 
-La mise en place d'un cache APT permet notamment de :
+Ce projet permet de travailler sur :
 
-- réduire la consommation de bande passante ;
-- accélérer les installations et les mises à jour ;
-- éviter le téléchargement répété des mêmes paquets ;
-- centraliser les téléchargements APT de plusieurs machines.
+* la mise en cache de paquets APT ;
+* l'utilisation d'un proxy ;
+* la réduction des téléchargements redondants ;
+* la centralisation des flux APT ;
+* la configuration client/serveur ;
+* la journalisation ;
+* le diagnostic d'un service réseau.
 
 ---
 
-## 🏗️ Fonctionnement général
+## 🏗️ Architecture
 
 ```text
-Client Ubuntu
-      │
-      │ Requête APT
-      ▼
-apt-cacher-ng
-      │
-      ├── Paquet déjà présent
-      │       │
-      │       └──► réponse depuis le cache
-      │
-      └── Paquet absent
-              │
-              ▼
-        Dépôt distant
-              │
-              ▼
-        Mise en cache
-              │
-              ▼
-           Client
+Clients Ubuntu / Debian
+          │
+          │ HTTP
+          ▼
+    apt-cacher-ng
+       TCP 3142
+          │
+          ├── Cache HIT
+          │      └── réponse locale
+          │
+          └── Cache MISS
+                 │
+                 ▼
+           Dépôt distant
+                 │
+                 ▼
+            Mise en cache
 ```
 
-Le répertoire utilisé par défaut pour stocker les paquets en cache est :
+---
+
+## 🔄 Principe du cache
+
+### Première demande
+
+```text
+Client
+   │
+   ▼
+apt-cacher-ng
+   │
+   ├── absent du cache
+   │
+   ▼
+Dépôt distant
+   │
+   ▼
+Téléchargement
+   │
+   ├── réponse au client
+   └── stockage local
+```
+
+### Demande suivante
+
+```text
+Client
+   │
+   ▼
+apt-cacher-ng
+   │
+   ├── présent dans le cache
+   │
+   ▼
+Réponse locale
+```
+
+Cela permet de réduire les téléchargements répétés depuis Internet.
+
+---
+
+## 📂 Cache
+
+Le cache est généralement stocké dans :
 
 ```text
 /var/cache/apt-cacher-ng
 ```
 
----
+Le paramètre associé est :
 
-## 1. Mettre à jour le système
-
-Avant l'installation :
-
-```bash
-sudo apt update && sudo apt upgrade -y
+```text
+CacheDir: /var/cache/apt-cacher-ng
 ```
 
 ---
 
-## 2. Installer apt-cacher-ng
+## 📄 Journaux
 
-Installer le paquet :
+Les journaux sont stockés dans :
 
-```bash
-sudo apt install apt-cacher-ng -y
+```text
+/var/log/apt-cacher-ng
+```
+
+Le paramètre correspondant est :
+
+```text
+LogDir: /var/log/apt-cacher-ng
+```
+
+Ils permettent notamment d'analyser :
+
+* les requêtes ;
+* l'utilisation du cache ;
+* les erreurs de téléchargement ;
+* les clients utilisant le service.
+
+---
+
+## 🌐 Port réseau
+
+Le port utilisé par défaut est :
+
+```text
+3142/TCP
+```
+
+Un client utilise donc une adresse de type :
+
+```text
+http://192.168.1.10:3142
 ```
 
 ---
 
-## 3. Configurer apt-cacher-ng
+## ⚙️ Configuration
 
-Le fichier principal de configuration est situé ici :
+Le fichier principal est :
 
 ```text
 /etc/apt-cacher-ng/acng.conf
 ```
 
-Il peut être édité avec :
-
-```bash
-sudo vi /etc/apt-cacher-ng/acng.conf
-```
-
 ---
-
-## ⚙️ Principaux paramètres
-
-Le fichier `acng.conf` permet de définir différents paramètres de fonctionnement.
 
 ### CacheDir
 
@@ -100,7 +161,7 @@ Le fichier `acng.conf` permet de définir différents paramètres de fonctionnem
 CacheDir: /var/cache/apt-cacher-ng
 ```
 
-Définit le répertoire dans lequel les paquets téléchargés sont mis en cache.
+Définit l'emplacement du cache.
 
 ---
 
@@ -110,164 +171,165 @@ Définit le répertoire dans lequel les paquets téléchargés sont mis en cache
 LogDir: /var/log/apt-cacher-ng
 ```
 
-Définit le répertoire contenant les journaux du service.
+Définit l'emplacement des journaux.
 
 ---
 
 ### Port
 
-Le port utilisé par défaut est :
+Le service utilise normalement :
 
 ```text
 3142
-```
-
-Les clients APT doivent donc utiliser l'adresse du serveur accompagnée de ce port.
-
-Exemple :
-
-```text
-http://192.168.1.10:3142
 ```
 
 ---
 
 ### BindAddress
 
-Le paramètre `BindAddress` permet de déterminer les interfaces réseau sur lesquelles le service écoute.
+`BindAddress` permet de contrôler les interfaces réseau sur lesquelles le service écoute.
 
-Il peut être adapté lorsque l'on souhaite limiter l'accès au cache à certaines interfaces.
+Cela peut notamment permettre d'éviter d'exposer le proxy sur une interface non nécessaire.
 
 ---
 
 ### Proxy
 
-Lorsque le serveur doit lui-même passer par un proxy pour accéder à Internet, celui-ci peut être renseigné dans la configuration.
-
-Exemple :
+Si le serveur doit lui-même utiliser un proxy pour accéder à Internet :
 
 ```text
-Proxy: http://www-proxy.example.net:3128
+Proxy: http://proxy.example.net:3128
 ```
 
 ---
 
-### Backends
+### Backends et remapping
 
-Les backends permettent de définir les différentes sources ou miroirs utilisés pour récupérer les paquets.
+apt-cacher-ng permet également d'utiliser des définitions de dépôts et de miroirs.
 
-Ils peuvent notamment être utilisés avec des règles de type :
+Exemple :
 
 ```text
 Remap-uburep: file:ubuntu_mirrors /ubuntu ; file:backends_ubuntu
 ```
 
----
-
-### ReportPage
-
-Le paramètre `ReportPage` permet de définir l'accès à la page de rapport fournie par apt-cacher-ng.
-
-Cette interface permet d'obtenir des informations sur le fonctionnement et l'utilisation du cache.
+Ces mécanismes permettent de contrôler la manière dont les requêtes sont associées aux dépôts distants.
 
 ---
 
-## 4. Redémarrer le service
+## 💻 Configuration des clients
 
-Après modification de la configuration :
+Les clients APT peuvent être configurés pour utiliser le proxy.
+
+Principe :
+
+```text
+APT
+ │
+ ▼
+Proxy :3142
+ │
+ ▼
+Dépôt distant / cache
+```
+
+La procédure complète est disponible dans :
+
+👉 [Installation et configuration](./installation.md)
+
+---
+
+## 🔐 Sécurité
+
+### Limiter l'accès réseau
+
+Le port :
+
+```text
+3142/TCP
+```
+
+ne doit pas être inutilement exposé à Internet.
+
+L'accès peut être limité :
+
+* au réseau interne ;
+* aux VLAN nécessaires ;
+* aux machines autorisées.
+
+---
+
+### Limiter les interfaces
+
+Lorsque cela est pertinent, `BindAddress` permet d'éviter une écoute sur toutes les interfaces du serveur.
+
+---
+
+### Protéger le cache et les journaux
+
+Les répertoires de cache et de logs ne doivent être modifiables que par les comptes réellement nécessaires.
+
+---
+
+### Maîtriser les dépôts utilisés
+
+Le cache ne remplace pas les mécanismes de confiance d'APT.
+
+Les clients continuent à utiliser les mécanismes de validation des dépôts et des métadonnées APT.
+
+---
+
+## ✅ Validation
+
+Vérifier le service :
 
 ```bash
-sudo systemctl restart apt-cacher-ng
+systemctl status apt-cacher-ng
 ```
 
----
-
-## 5. Configurer un client Ubuntu
-
-Sur chaque client utilisant le cache, créer le fichier :
-
-```text
-/etc/apt/apt.conf.d/02-aptcacher
-```
-
-Ajouter ensuite :
-
-```text
-Acquire::http::Proxy "http://ADRESSE_IP_SERVEUR:3142";
-```
-
-Par exemple :
-
-```text
-Acquire::http::Proxy "http://192.168.1.10:3142";
-```
-
-L'adresse doit correspondre à celle du serveur hébergeant `apt-cacher-ng`.
-
----
-
-## 6. Tester le cache
-
-Sur le client, mettre à jour la liste des paquets :
+Vérifier l'écoute :
 
 ```bash
-sudo apt update
+ss -lntp | grep ':3142'
 ```
 
-Puis installer ou mettre à jour des paquets.
-
-Exemple :
+Observer le cache :
 
 ```bash
-sudo apt upgrade
+du -sh /var/cache/apt-cacher-ng
 ```
 
-Sur le serveur, vérifier ensuite que de nouveaux fichiers apparaissent dans :
+Consulter les journaux :
 
-```text
-/var/cache/apt-cacher-ng
+```bash
+ls -l /var/log/apt-cacher-ng
 ```
 
-La présence des paquets téléchargés dans ce répertoire permet de confirmer qu'ils sont bien mis en cache.
-
----
-
-## 🔄 Principe du cache
-
-Lors du premier téléchargement :
-
-```text
-Client
-   │
-   ▼
-apt-cacher-ng
-   │
-   ▼
-Internet
-   │
-   ▼
-Paquet téléchargé et stocké dans le cache
-```
-
-Lors d'une demande ultérieure du même paquet :
-
-```text
-Client
-   │
-   ▼
-apt-cacher-ng
-   │
-   ▼
-Paquet déjà présent dans le cache
-```
-
-Le paquet peut alors être fourni localement sans devoir être téléchargé une nouvelle fois depuis le dépôt distant.
+Puis effectuer des opérations APT depuis plusieurs clients afin d'observer la réutilisation du contenu mis en cache.
 
 ---
 
 ## 📌 Points clés
 
-- **Économie de bande passante :** les paquets déjà téléchargés peuvent être réutilisés par plusieurs clients.
-- **Performance :** les paquets présents dans le cache peuvent être récupérés depuis le réseau local.
-- **Centralisation :** plusieurs machines utilisent le même serveur de cache APT.
-- **Simplicité :** une fois les clients configurés, l'utilisation du cache est transparente lors des opérations APT.
+* apt-cacher-ng agit comme un proxy de cache.
+* Les paquets déjà récupérés peuvent être réutilisés par plusieurs machines.
+* Le cache réduit les téléchargements redondants.
+* Le port par défaut est `3142/TCP`.
+* Les clients utilisent le proxy de manière transparente pour leurs opérations APT.
+* L'accès au cache doit être limité aux réseaux nécessaires.
+* Les mécanismes de vérification APT restent importants.
+
+---
+
+## 🧠 Compétences mises en pratique
+
+* administration Linux ;
+* APT ;
+* proxy ;
+* cache ;
+* services réseau ;
+* gestion de paquets ;
+* optimisation de bande passante ;
+* journalisation ;
+* sécurité réseau ;
+* troubleshooting.
