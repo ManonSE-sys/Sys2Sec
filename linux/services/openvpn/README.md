@@ -4,25 +4,34 @@
 
 **OpenVPN** permet de créer un tunnel chiffré entre un client distant et un réseau privé.
 
-Ce projet documente la mise en place d'un serveur OpenVPN sous Ubuntu avec **Easy-RSA** pour la gestion des certificats, ainsi que les principaux points de sécurité associés.
+Ce projet documente la mise en place d'un serveur OpenVPN sous Ubuntu avec **Easy-RSA** pour la gestion des certificats.
 
-L'objectif n'est pas seulement de mettre en place le tunnel VPN, mais également de comprendre les mécanismes de sécurité qui permettent de contrôler et protéger les accès distants.
+L'objectif est de comprendre à la fois :
+
+* le fonctionnement d'un tunnel VPN ;
+* l'authentification par certificats ;
+* le routage vers un réseau interne ;
+* la gestion des clients ;
+* la révocation des accès ;
+* les principaux mécanismes de durcissement.
 
 ---
 
 ## 🎯 Objectifs
 
-Cette mise en place permet de :
+Ce projet permet de travailler sur :
 
-- installer un serveur OpenVPN ;
-- créer une autorité de certification avec Easy-RSA ;
-- générer et signer le certificat du serveur ;
-- attribuer un certificat distinct aux clients ;
-- créer un réseau VPN dédié ;
-- pousser une route vers un réseau interne ;
-- activer le transfert IPv4 ;
-- superviser les connexions et certificats ;
-- appliquer plusieurs principes de durcissement.
+* OpenVPN ;
+* Easy-RSA ;
+* PKI et certificats X.509 ;
+* création d'une autorité de certification ;
+* authentification serveur/client ;
+* création d'un réseau VPN dédié ;
+* routage entre réseaux ;
+* IP forwarding ;
+* sécurité des accès distants ;
+* gestion des certificats ;
+* supervision et diagnostic.
 
 ---
 
@@ -43,183 +52,196 @@ Serveur OpenVPN
           192.168.1.0/24
 ```
 
----
+Le client établit un tunnel chiffré avec le serveur.
 
-## 1. Mettre à jour le système
+Une adresse appartenant au réseau VPN lui est attribuée :
 
-```bash
-sudo apt update && sudo apt upgrade -y
+```text
+10.8.0.0/24
+```
+
+Le serveur peut ensuite router les flux autorisés vers le réseau interne :
+
+```text
+192.168.1.0/24
 ```
 
 ---
 
-## 2. Installer OpenVPN et Easy-RSA
+## ⚙️ Fonctionnement
 
-```bash
-sudo apt install openvpn easy-rsa -y
+L'architecture repose sur une infrastructure à clés publiques.
+
+```text
+Autorité de certification
+          │
+          ├── Certificat serveur
+          │
+          ├── Certificat client 1
+          │
+          ├── Certificat client 2
+          │
+          └── Certificat client ...
 ```
 
-Easy-RSA est utilisé pour créer l'autorité de certification et gérer les certificats du serveur et des clients.
+L'autorité de certification permet de signer les certificats utilisés par les différentes machines.
+
+Lorsqu'un client se connecte :
+
+```text
+Client
+  │
+  │ Certificat + clé privée
+  ▼
+Serveur OpenVPN
+  │
+  │ Vérification du certificat
+  ▼
+Tunnel VPN
+```
+
+Chaque client doit idéalement posséder sa propre identité cryptographique.
 
 ---
 
-## 3. Créer l'autorité de certification
+## 🔑 Gestion des certificats
 
-Depuis l'environnement Easy-RSA :
+**Easy-RSA** est utilisé pour gérer la PKI du lab.
 
-```bash
-./easyrsa build-ca
-```
+Elle permet notamment de :
 
-Lors de cette étape, définir notamment :
+* créer l'autorité de certification ;
+* générer les clés privées ;
+* créer les demandes de certificat ;
+* signer les certificats serveur et clients ;
+* renouveler les certificats ;
+* révoquer les certificats compromis ;
+* générer une liste de révocation.
 
-- un mot de passe pour protéger la CA ;
-- un nom commun adapté à l'environnement.
-
-> 🔐 La clé privée de l'autorité de certification est particulièrement sensible. Elle doit être protégée et ne doit pas être distribuée aux clients.
-
----
-
-## 4. Générer le certificat du serveur
-
-Créer la paire de clés et la demande de certificat :
-
-```bash
-./easyrsa gen-req nom_serveur nopass
-```
-
-Puis signer la demande avec la CA :
-
-```bash
-./easyrsa sign-req server nom_serveur
-```
-
-> ⚠️ L'option `nopass` simplifie le démarrage automatique du service, mais supprime la protection par mot de passe de la clé privée. Ce choix doit être évalué selon le contexte et les mesures de protection du serveur.
+La clé privée de l'autorité de certification constitue un élément particulièrement sensible et doit être protégée.
 
 ---
 
-## 5. Générer les paramètres nécessaires
+## 🌐 Réseau VPN
 
-Dans la configuration documentée initialement, les paramètres Diffie-Hellman sont générés avec :
+La configuration serveur utilise :
 
-```bash
-./easyrsa gen-dh
+```text
+10.8.0.0/24
 ```
 
+comme réseau dédié au tunnel.
+
+Le serveur peut également annoncer une route vers le réseau interne :
+
+```text
+192.168.1.0/24
+```
+
+Exemple :
+
+```text
+Client VPN
+10.8.0.x
+    │
+    ▼
+Serveur VPN
+10.8.0.1
+    │
+    ▼
+192.168.1.0/24
+```
+
+Le routage doit être limité aux ressources réellement nécessaires.
+
 ---
 
-## 6. Configurer le serveur OpenVPN
+## 🔀 IP forwarding
 
-Le fichier de configuration utilisé comme base est disponible ici :
+Pour permettre au serveur de transférer du trafic entre le tunnel VPN et un autre réseau, le transfert IPv4 doit être activé.
 
-👉 [`configs/server.conf`](configs/server.conf)
-
-Il configure notamment :
-
-- le port UDP `1194` ;
-- une interface virtuelle `tun` ;
-- les certificats du serveur ;
-- le réseau VPN `10.8.0.0/24` ;
-- une route vers `192.168.1.0/24` ;
-- la journalisation de l'état des connexions ;
-- la conservation de l'interface et des clés lors d'un redémarrage du service.
-
-> Les chemins de certificats, adresses IP, routes et paramètres cryptographiques doivent être adaptés à l'environnement réellement utilisé.
-
----
-
-## 7. Activer le transfert IPv4
-
-Pour permettre au serveur VPN de router le trafic entre le tunnel et d'autres réseaux, activer l'IP forwarding.
-
-Dans `/etc/sysctl.conf` :
+Le paramètre correspondant est :
 
 ```text
 net.ipv4.ip_forward=1
 ```
 
-Puis appliquer la configuration :
-
-```bash
-sudo sysctl -p
-```
+Cela transforme le serveur VPN en point de routage entre les différents réseaux autorisés.
 
 ---
 
-## 8. Démarrer le service
+## ⚙️ Configuration serveur
 
-Le nom exact de l'unité systemd dépend du paquet OpenVPN et de la disposition des fichiers de configuration.
+Un exemple de configuration est disponible dans :
 
-Dans l'environnement documenté initialement, le service était démarré avec :
+👉 [`configs/server.conf`](./configs/server.conf)
 
-```bash
-sudo systemctl enable openvpn@server
-sudo systemctl start openvpn@server
-```
+Elle définit notamment :
 
-Vérifier ensuite son état :
+* le port UDP `1194` ;
+* l'interface virtuelle `tun` ;
+* les certificats utilisés ;
+* le réseau VPN `10.8.0.0/24` ;
+* la route vers `192.168.1.0/24` ;
+* le fichier de statut des connexions ;
+* la persistance de l'interface et des clés.
 
-```bash
-systemctl status openvpn@server
-```
-
----
-
-## 9. Configurer les clients
-
-Chaque client doit disposer de son propre certificat et de sa propre clé privée.
-
-La procédure de génération, de configuration et de connexion est détaillée ici :
-
-👉 [Voir la configuration client](./client.md)
+Les chemins, réseaux et paramètres cryptographiques doivent être adaptés à l'environnement utilisé.
 
 ---
 
-## 🔐 Sécurité et durcissement
+# 🔐 Sécurité et durcissement
 
-### Utiliser un certificat distinct par client
+## Utiliser un certificat distinct par client
 
 Chaque utilisateur ou machine doit disposer de son propre certificat.
 
 Cela permet :
 
-- d'identifier précisément les clients ;
-- de révoquer un seul certificat en cas de compromission ;
-- d'éviter le partage d'identités entre plusieurs utilisateurs.
+* d'identifier individuellement les clients ;
+* de révoquer un seul accès ;
+* de tracer plus facilement les connexions ;
+* d'éviter le partage d'une identité commune.
 
 ---
 
-### Protéger les clés privées
+## Protéger les clés privées
 
-Les clés privées de la CA, du serveur et des clients ne doivent jamais être exposées publiquement.
+Les clés privées :
 
-Les fichiers sensibles doivent être protégés par des permissions adaptées.
+* de la CA ;
+* du serveur ;
+* des clients ;
 
-Exemple :
+doivent être considérées comme des secrets.
+
+Exemple de permissions :
 
 ```bash
 chmod 600 /etc/openvpn/easy-rsa/pki/private/srv-vpn.key
 ```
 
+Une clé privée exposée peut permettre à un attaquant d'usurper une identité.
+
 ---
 
-### Valider l'identité du serveur côté client
+## Valider l'identité du serveur
 
-Le profil client utilise :
+Le profil client utilise notamment :
 
 ```text
 remote-cert-tls server
 ```
 
-Cette directive permet au client de vérifier que le certificat présenté correspond bien à un certificat destiné à un serveur.
+Cette directive permet de vérifier que le certificat présenté est prévu pour être utilisé par un serveur.
 
 ---
 
-### Utiliser des algorithmes modernes
+## Utiliser des algorithmes modernes
 
-La configuration d'origine mentionnait notamment `AES-256-CBC`.
+Pour une nouvelle configuration, il est préférable d'utiliser les mécanismes de négociation modernes d'OpenVPN ainsi que des chiffrements AEAD lorsque les versions utilisées le permettent.
 
-Pour une nouvelle configuration, il est préférable d'utiliser les mécanismes de négociation modernes d'OpenVPN et des chiffrements AEAD lorsque les versions serveur/client le permettent, par exemple :
+Exemples :
 
 ```text
 AES-256-GCM
@@ -227,13 +249,13 @@ AES-128-GCM
 CHACHA20-POLY1305
 ```
 
-La configuration retenue doit rester compatible avec les versions déployées.
+La configuration doit rester compatible avec les versions serveur et client réellement déployées.
 
 ---
 
-### Restreindre les routes
+## Restreindre les routes
 
-Un VPN ne doit donner accès qu'aux réseaux nécessaires.
+Un VPN ne doit pas automatiquement fournir un accès à l'ensemble du réseau interne.
 
 Exemple :
 
@@ -241,70 +263,174 @@ Exemple :
 push "route 192.168.1.0 255.255.255.0"
 ```
 
-Il est préférable d'éviter d'exposer inutilement d'autres réseaux internes aux clients VPN.
+Seuls les réseaux réellement nécessaires doivent être accessibles.
 
 ---
 
-### Filtrer l'accès réseau
+## Filtrer les flux
 
-Le port OpenVPN ne doit être exposé que lorsque nécessaire.
-
-Dans cet exemple :
+Dans ce projet, OpenVPN utilise :
 
 ```text
 UDP 1194
 ```
 
-Le pare-feu doit également contrôler les flux autorisés entre :
+Le pare-feu doit contrôler :
 
 ```text
-Clients VPN
-    │
-    ▼
+Internet / Clients
+        │
+        ▼
+UDP 1194
+        │
+        ▼
 Serveur OpenVPN
-    │
-    ▼
+        │
+        ▼
 Réseaux internes autorisés
 ```
 
----
-
-### Révoquer les certificats compromis
-
-En cas de perte ou de compromission d'un certificat client, celui-ci doit pouvoir être révoqué.
-
-La gestion de la révocation via Easy-RSA et l'utilisation d'une CRL permettent d'empêcher un ancien certificat de continuer à se connecter.
+Les flux provenant du tunnel VPN vers les réseaux internes doivent également être filtrés selon les besoins.
 
 ---
 
-### Renforcer la protection du canal TLS
+## Révoquer les certificats compromis
 
-OpenVPN peut également utiliser des mécanismes comme `tls-auth` ou `tls-crypt` pour ajouter une protection supplémentaire au canal de contrôle.
+Lorsqu'un client :
 
-Le choix dépend de la version d'OpenVPN et de l'architecture retenue.
+* perd son appareil ;
+* quitte l'organisation ;
+* expose sa clé privée ;
+* ne doit plus disposer d'un accès ;
+
+son certificat doit pouvoir être révoqué.
+
+Easy-RSA permet de gérer cette révocation et de générer une **CRL (Certificate Revocation List)**.
+
+Le serveur doit ensuite consulter cette liste afin de refuser les certificats révoqués.
 
 ---
 
-### Surveiller les connexions
+## Renforcer le canal TLS
 
-Les journaux et fichiers de statut permettent de suivre :
+OpenVPN peut utiliser des mécanismes complémentaires tels que :
 
-- les clients connectés ;
-- les adresses attribuées ;
-- les erreurs d'authentification ;
-- les certificats utilisés ;
-- les anomalies de fonctionnement.
+```text
+tls-auth
+```
 
-Les principales commandes sont regroupées ici :
+ou :
 
-👉 [Voir les commandes utiles OpenVPN](./commandes-utiles.md)
+```text
+tls-crypt
+```
+
+Ils permettent d'ajouter une couche de protection au canal de contrôle OpenVPN.
+
+---
+
+## 📊 Supervision
+
+Les connexions peuvent être suivies grâce aux journaux et fichiers de statut.
+
+Ils permettent notamment de contrôler :
+
+* les clients connectés ;
+* les adresses VPN attribuées ;
+* les erreurs d'authentification ;
+* les certificats utilisés ;
+* les erreurs de routage ou de connexion.
+
+Les principales commandes sont regroupées dans :
+
+👉 [Commandes utiles OpenVPN](./commandes-utiles.md)
+
+---
+
+## 🚀 Installation du serveur
+
+La procédure complète de mise en place du serveur, de la PKI et du routage est disponible ici :
+
+👉 [Installation et configuration du serveur OpenVPN](./installation.md)
+
+---
+
+## 👤 Configuration des clients
+
+Chaque client doit disposer de son propre certificat et de sa propre clé privée.
+
+La procédure est documentée séparément :
+
+👉 [Configuration d'un client OpenVPN](./client.md)
+
+---
+
+## ✅ Validation
+
+Après configuration, plusieurs éléments doivent être vérifiés.
+
+### Service OpenVPN
+
+```bash
+systemctl status openvpn@server
+```
+
+### Interface VPN
+
+```bash
+ip a
+```
+
+### Routes
+
+```bash
+ip route
+```
+
+### IP forwarding
+
+```bash
+sysctl net.ipv4.ip_forward
+```
+
+### Connexions actives
+
+Selon la configuration :
+
+```bash
+cat /var/log/openvpn/openvpn-status.log
+```
 
 ---
 
 ## 📌 Points clés
 
-- **Chiffrement :** le tunnel protège les échanges entre les clients et le serveur VPN.
-- **Authentification :** les certificats permettent d'identifier les différents clients.
-- **Segmentation :** les routes doivent être limitées aux ressources réellement nécessaires.
-- **Révocation :** un certificat compromis doit pouvoir être désactivé.
-- **Supervision :** les connexions et certificats doivent être surveillés dans le temps.
+* OpenVPN permet de créer un tunnel chiffré entre un client et un réseau distant.
+* Une PKI permet d'identifier le serveur et les clients.
+* Chaque client doit disposer d'un certificat distinct.
+* Les clés privées doivent être protégées.
+* Les routes VPN doivent être limitées aux ressources nécessaires.
+* Le pare-feu doit contrôler les flux entrant dans le VPN et sortant du tunnel.
+* Les certificats compromis doivent pouvoir être révoqués.
+* Les connexions et dates d'expiration des certificats doivent être surveillées.
+
+---
+
+## 🧠 Compétences mises en pratique
+
+Ce projet permet de travailler sur :
+
+* administration Linux ;
+* OpenVPN ;
+* Easy-RSA ;
+* PKI ;
+* certificats X.509 ;
+* cryptographie appliquée ;
+* routage ;
+* IP forwarding ;
+* services réseau ;
+* pare-feu ;
+* contrôle d'accès ;
+* supervision ;
+* sécurité des accès distants ;
+* troubleshooting réseau.
